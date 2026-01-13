@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "react-router-dom";
-import { Send, Download, Plus, QrCode } from "lucide-react";
+import { Send, Download, Plus, QrCode, ArrowDownLeft, Sparkles } from "lucide-react";
 import { AnimatedLogo } from "@/components/AnimatedLogo";
 import { BalanceDisplay } from "@/components/BalanceDisplay";
 import { ActionButton } from "@/components/ActionButton";
@@ -9,8 +9,10 @@ import { TransactionItem } from "@/components/TransactionItem";
 import { ChatInterface } from "@/components/ChatInterface";
 import { SendDrawer } from "@/components/SendDrawer";
 import { DepositDrawer } from "@/components/DepositDrawer";
+import { ReceiveDrawer } from "@/components/ReceiveDrawer";
 import { DemoModeBanner } from "@/components/DemoModeBanner";
 import { Navigation } from "@/components/Navigation";
+import { FeatureTile } from "@/components/FeatureTile";
 import { Button } from "@/components/ui/button";
 
 interface Transaction {
@@ -31,6 +33,7 @@ export default function DashboardPage() {
   const [balance, setBalance] = useState(250.0);
   const [showSendDrawer, setShowSendDrawer] = useState(false);
   const [showDepositDrawer, setShowDepositDrawer] = useState(false);
+  const [showReceiveDrawer, setShowReceiveDrawer] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([
     {
       id: "1",
@@ -120,51 +123,89 @@ export default function DashboardPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="p-6"
+          className="px-4 py-3"
         >
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <AnimatedLogo size="sm" />
-            <Button variant="ghost" size="icon" aria-label="Scan QR code">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              aria-label="Scan QR code"
+              onClick={() => setShowReceiveDrawer(true)}
+            >
               <QrCode className="w-5 h-5" />
             </Button>
           </div>
 
           {/* Balance */}
-          <div className="mb-6">
+          <div className="mb-4">
             <BalanceDisplay balance={balance} />
           </div>
 
-          {/* Quick actions */}
-          <div className="grid grid-cols-2 gap-3 mb-8">
-            <ActionButton
+          {/* Feature Tiles */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <FeatureTile
               icon={Plus}
-              label="Add Money"
-              variant="secondary"
+              title="Deposit"
+              description="Add funds"
+              variant="deposit"
               onClick={() => setShowDepositDrawer(true)}
+              delay={0.1}
             />
-            <ActionButton
+            <FeatureTile
+              icon={ArrowDownLeft}
+              title="Receive"
+              description="Get paid"
+              variant="receive"
+              onClick={() => setShowReceiveDrawer(true)}
+              delay={0.2}
+            />
+            <FeatureTile
               icon={Send}
-              label="Send"
-              variant="accent"
+              title="Send"
+              description="Transfer"
+              variant="send"
               onClick={() => setShowSendDrawer(true)}
+              delay={0.3}
             />
           </div>
 
+          {/* AI Chat Banner */}
+          <motion.button
+            onClick={() => setActiveTab("chat")}
+            className="w-full p-3 mb-4 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 flex items-center gap-3"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <div className="w-10 h-10 rounded-full gradient-hero flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="font-medium text-sm">AI-Powered Assistant</p>
+              <p className="text-xs text-muted-foreground">Send money with natural language</p>
+            </div>
+            <div className="px-2 py-0.5 rounded-full bg-accent/20 text-accent text-xs font-medium">
+              NEW
+            </div>
+          </motion.button>
+
           {/* Recent transactions */}
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold">Recent Activity</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-sm">Recent Activity</h2>
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="text-primary"
+                className="text-primary text-xs h-8"
                 onClick={() => setActiveTab("history")}
               >
                 View all
               </Button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {transactions.slice(0, 3).map((tx, index) => (
                 <TransactionItem
                   key={tx.id}
@@ -180,7 +221,7 @@ export default function DashboardPage() {
       {/* Chat Tab */}
       {activeTab === "chat" && (
         <div className="h-[calc(100vh-64px)]">
-          <ChatInterface onTransactionComplete={handleChatTransaction} />
+          <ChatInterface onTransactionComplete={handleChatTransaction} balance={balance} />
         </div>
       )}
 
@@ -189,10 +230,10 @@ export default function DashboardPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="p-6"
+          className="px-4 py-3"
         >
-          <h1 className="text-2xl font-bold mb-6">Transaction History</h1>
-          <div className="space-y-3">
+          <h1 className="text-xl font-bold mb-4">Transaction History</h1>
+          <div className="space-y-2">
             {transactions.map((tx, index) => (
               <TransactionItem
                 key={tx.id}
@@ -203,9 +244,9 @@ export default function DashboardPage() {
             ))}
           </div>
           {transactions.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>No transactions yet</p>
-              <p className="text-sm">Your transaction history will appear here</p>
+            <div className="text-center py-8 text-muted-foreground">
+              <p className="text-sm">No transactions yet</p>
+              <p className="text-xs">Your history will appear here</p>
             </div>
           )}
         </motion.div>
@@ -216,40 +257,41 @@ export default function DashboardPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="p-6"
+          className="px-4 py-3"
         >
-          <h1 className="text-2xl font-bold mb-6">Profile</h1>
+          <h1 className="text-xl font-bold mb-4">Profile</h1>
           
-          <div className="space-y-4">
-            <div className="p-4 bg-card border border-border rounded-xl">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full gradient-hero flex items-center justify-center text-2xl font-bold text-primary-foreground">
+          <div className="space-y-3">
+            <div className="p-3 bg-card border border-border rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-full gradient-hero flex items-center justify-center text-xl font-bold text-primary-foreground">
                   JD
                 </div>
                 <div>
-                  <p className="font-semibold text-lg">John Doe</p>
-                  <p className="text-sm text-muted-foreground">+1 234 567 8900</p>
+                  <p className="font-semibold">John Doe</p>
+                  <p className="text-xs text-muted-foreground">+1 234 567 8900</p>
+                  <p className="text-xs text-muted-foreground">john.doe@email.com</p>
                 </div>
               </div>
             </div>
             
-            <div className="p-4 bg-card border border-border rounded-xl">
-              <h3 className="font-medium mb-3">Account Status</h3>
+            <div className="p-3 bg-card border border-border rounded-xl">
+              <h3 className="font-medium text-sm mb-2">Account Status</h3>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-success animate-pulse" />
-                <span className="text-sm text-success font-medium">Mock Verified</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-success animate-pulse" />
+                <span className="text-xs text-success font-medium">Mock Verified</span>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground mt-1.5">
                 Demo account • Full features enabled
               </p>
             </div>
             
-            <div className="p-4 bg-card border border-border rounded-xl space-y-3">
-              <h3 className="font-medium">Settings</h3>
+            <div className="p-3 bg-card border border-border rounded-xl space-y-2">
+              <h3 className="font-medium text-sm">Settings</h3>
               {["Notifications", "Security", "Payment Methods", "Help & Support"].map((item) => (
                 <button
                   key={item}
-                  className="w-full text-left py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="w-full text-left py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {item}
                 </button>
@@ -273,6 +315,10 @@ export default function DashboardPage() {
         isOpen={showDepositDrawer}
         onClose={() => setShowDepositDrawer(false)}
         onDeposit={handleDeposit}
+      />
+      <ReceiveDrawer
+        isOpen={showReceiveDrawer}
+        onClose={() => setShowReceiveDrawer(false)}
       />
 
       {/* Demo mode banner */}

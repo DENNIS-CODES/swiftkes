@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ArrowRight, Smartphone, Building2, Loader2 } from "lucide-react";
+import { X, ArrowRight, Smartphone, Building2, Loader2, Phone, Mail, AtSign } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -14,20 +14,30 @@ interface SendDrawerProps {
 }
 
 type Step = "amount" | "recipient" | "method" | "confirm" | "processing" | "success";
+type RecipientType = "phone" | "email";
 
 export function SendDrawer({ isOpen, onClose, balance, onSend }: SendDrawerProps) {
   const [step, setStep] = useState<Step>("amount");
   const [amount, setAmount] = useState("");
   const [recipient, setRecipient] = useState("");
+  const [recipientType, setRecipientType] = useState<RecipientType>("phone");
   const [method, setMethod] = useState<"mpesa" | "bank" | null>(null);
 
   const kesAmount = parseFloat(amount || "0") * 152.5;
   const fee = parseFloat(amount || "0") * 0.015;
 
+  const isValidRecipient = () => {
+    if (recipientType === "phone") {
+      return recipient.replace(/\D/g, "").length >= 10;
+    } else {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient);
+    }
+  };
+
   const handleSubmit = () => {
     if (step === "amount" && parseFloat(amount) > 0 && parseFloat(amount) <= balance) {
       setStep("recipient");
-    } else if (step === "recipient" && recipient.length >= 10) {
+    } else if (step === "recipient" && isValidRecipient()) {
       setStep("method");
     } else if (step === "method" && method) {
       setStep("confirm");
@@ -44,6 +54,7 @@ export function SendDrawer({ isOpen, onClose, balance, onSend }: SendDrawerProps
     setStep("amount");
     setAmount("");
     setRecipient("");
+    setRecipientType("phone");
     setMethod(null);
     onClose();
   };
@@ -139,31 +150,61 @@ export function SendDrawer({ isOpen, onClose, balance, onSend }: SendDrawerProps
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    className="space-y-4"
+                    className="space-y-3"
                   >
+                    {/* Recipient Type Toggle */}
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        onClick={() => { setRecipientType("phone"); setRecipient(""); }}
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                          recipientType === "phone" 
+                            ? "bg-primary text-primary-foreground" 
+                            : "bg-secondary text-secondary-foreground"
+                        }`}
+                      >
+                        <Phone className="w-4 h-4" />
+                        Phone
+                      </button>
+                      <button
+                        onClick={() => { setRecipientType("email"); setRecipient(""); }}
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                          recipientType === "email" 
+                            ? "bg-primary text-primary-foreground" 
+                            : "bg-secondary text-secondary-foreground"
+                        }`}
+                      >
+                        <Mail className="w-4 h-4" />
+                        Email
+                      </button>
+                    </div>
+
                     <div>
-                      <Label htmlFor="recipient">Recipient Phone Number</Label>
+                      <Label htmlFor="recipient">
+                        {recipientType === "phone" ? "Phone Number" : "Email Address"}
+                      </Label>
                       <Input
                         id="recipient"
-                        type="tel"
-                        placeholder="+254 7XX XXX XXX"
+                        type={recipientType === "phone" ? "tel" : "email"}
+                        placeholder={recipientType === "phone" ? "+254 7XX XXX XXX" : "recipient@email.com"}
                         value={recipient}
                         onChange={(e) => setRecipient(e.target.value)}
-                        className="text-lg h-14 mt-2"
+                        className="text-base h-12 mt-2"
                         autoFocus
                       />
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Enter the Kenyan phone number
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        {recipientType === "phone" 
+                          ? "Enter the recipient's phone number" 
+                          : "Enter the recipient's email address"}
                       </p>
                     </div>
                     
                     <Button
                       onClick={handleSubmit}
-                      className="w-full h-14 gradient-accent text-accent-foreground font-medium text-base"
-                      disabled={recipient.length < 10}
+                      className="w-full h-12 gradient-accent text-accent-foreground font-medium text-sm"
+                      disabled={!isValidRecipient()}
                     >
                       Continue
-                      <ArrowRight className="w-5 h-5 ml-2" />
+                      <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   </motion.div>
                 )}
