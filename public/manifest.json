@@ -1,0 +1,17 @@
+{
+  "name": "SwiftKes",
+  "short_name": "SwiftKes",
+  "description": "Send money to Kenya instantly via stablecoins",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAFAFA",
+  "theme_color": "#0F766E",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
