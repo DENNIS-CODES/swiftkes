@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, Bot } from "lucide-react";
+import { Send, Loader2, Bot, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ChatMessage } from "./ChatMessage";
@@ -14,58 +14,78 @@ interface Message {
 
 interface ChatInterfaceProps {
   onTransactionComplete?: (tx: { amount: number; recipient: string }) => void;
+  balance?: number;
 }
 
-const BOT_RESPONSES: Record<string, string> = {
-  greeting: `👋 Welcome to SwiftKes!
-
-I can help you send money to Kenya instantly. Just tell me what you'd like to do:
-
-• "Send 100 USD to +254712345678"
-• "Check my balance"
-• "Show exchange rate"`,
+// Simple AI-like response generation
+const generateAIResponse = (input: string, balance: number): { response: string; intent: string } => {
+  const lowerInput = input.toLowerCase();
   
-  send_intent: `Great! I'll help you send money. Here's a summary:
-
-💰 Amount: {amount} USD
-📱 Recipient: {recipient}
-💱 Rate: 1 USD = 152.50 KES
-📤 They receive: ~{kesAmount} KES
-💳 Fee: 1.5% ({fee} USD)
-
-Please select the recipient's preferred method:`,
+  // Intent detection
+  if (lowerInput.includes("send") && /\d+/.test(lowerInput)) {
+    const amountMatch = lowerInput.match(/(\d+)\s*(usd|dollars?)?/i);
+    const phoneMatch = lowerInput.match(/\+?\d{10,12}/);
+    const emailMatch = lowerInput.match(/[\w.-]+@[\w.-]+\.\w+/);
+    
+    const amount = amountMatch ? parseInt(amountMatch[1]) : 100;
+    const recipient = emailMatch ? emailMatch[0] : (phoneMatch ? phoneMatch[0] : "+254712345678");
+    const kesAmount = Math.round(amount * 152.5);
+    const fee = (amount * 0.015).toFixed(2);
+    
+    if (amount > balance) {
+      return {
+        response: `❌ Insufficient balance!\n\nYou're trying to send $${amount} but your balance is only $${balance.toFixed(2)}.\n\nWould you like to:\n• Send a smaller amount\n• Add funds to your wallet first`,
+        intent: "insufficient_funds"
+      };
+    }
+    
+    return {
+      response: `🤖 AI Analysis Complete!\n\n💰 Amount: $${amount} USD\n📱 Recipient: ${recipient}\n💱 Rate: 1 USD = 152.50 KES\n📤 They receive: ~KES ${kesAmount.toLocaleString()}\n💳 Fee: 1.5% ($${fee})\n\nPlease select the delivery method:\n\n1️⃣ M-Pesa (Instant)\n2️⃣ Bank Transfer (1-2 days)`,
+      intent: "send_intent"
+    };
+  }
   
-  verification: `For your security, I've sent a 6-digit OTP to your phone. Please enter it to confirm this transaction.`,
+  if (lowerInput.includes("balance") || lowerInput.includes("how much")) {
+    const kesBalance = Math.round(balance * 152.5);
+    return {
+      response: `💰 Your Current Balance:\n\n🇺🇸 USD: $${balance.toFixed(2)}\n🇰🇪 KES: ≈${kesBalance.toLocaleString()}\n\n📊 Today's rate: 1 USD = 152.50 KES\n✨ Available for instant M-Pesa withdrawal`,
+      intent: "balance"
+    };
+  }
   
-  confirmed: `✅ Transaction Confirmed!
-
-🎉 {amount} USD sent to {recipient}
-
-Transaction ID: SW-{txId}
-They'll receive {kesAmount} KES via M-Pesa within 30 seconds.
-
-Need anything else?`,
+  if (lowerInput.includes("rate") || lowerInput.includes("exchange") || lowerInput.includes("convert")) {
+    return {
+      response: `📊 Live Exchange Rates:\n\n🔄 1 USD = 152.50 KES\n🔄 1 EUR = 165.30 KES\n🔄 1 GBP = 192.80 KES\n\n⏱️ Updated: just now\n💎 SwiftKes fee: Only 1.5%\n\n💡 Tip: Say "Send 50 USD to +254712345678" to start a transfer!`,
+      intent: "rate"
+    };
+  }
   
-  balance: `💰 Your current balance:
+  if (lowerInput.includes("help") || lowerInput.includes("what can")) {
+    return {
+      response: `🤖 I'm your AI-powered assistant!\n\nHere's what I can help with:\n\n💸 Send Money\n"Send 100 USD to +254712345678"\n"Transfer $50 to john@email.com"\n\n💰 Check Balance\n"What's my balance?"\n"How much do I have?"\n\n📊 Exchange Rates\n"Show exchange rate"\n"Convert 100 USD to KES"\n\n❓ Just type naturally and I'll understand!`,
+      intent: "help"
+    };
+  }
   
-USDC: {usdBalance} USD
-≈ KES {kesBalance}
-
-Available for instant withdrawal to M-Pesa.`,
+  if (lowerInput.includes("hi") || lowerInput.includes("hello") || lowerInput.includes("hey")) {
+    return {
+      response: `👋 Hey there! Welcome to SwiftKes!\n\nI'm your AI assistant, ready to help you send money to Kenya instantly.\n\n💡 Try saying:\n• "Send 100 USD to +254712345678"\n• "Check my balance"\n• "What's the exchange rate?"\n\nHow can I help you today?`,
+      intent: "greeting"
+    };
+  }
   
-  rate: `📊 Current Exchange Rate:
-
-1 USD = 152.50 KES
-Last updated: just now
-
-SwiftKes fee: 1.5% (lowest in market!)`,
+  // Default intelligent response
+  return {
+    response: `🤖 I understood you said: "${input}"\n\nI can help you with:\n\n• 💸 Sending money (e.g., "Send 50 USD to +254700123456")\n• 💰 Checking your balance\n• 📊 Viewing exchange rates\n\nWhat would you like to do?`,
+    intent: "unknown"
+  };
 };
 
-export function ChatInterface({ onTransactionComplete }: ChatInterfaceProps) {
+export function ChatInterface({ onTransactionComplete, balance = 250 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: BOT_RESPONSES.greeting,
+      text: `👋 Welcome to SwiftKes AI!\n\nI'm your intelligent assistant powered by AI. I can help you:\n\n• 💸 Send money with natural language\n• 💰 Check your balance\n• 📊 Get live exchange rates\n\n💡 Try: "Send 100 USD to +254712345678"`,
       isUser: false,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     },
@@ -114,33 +134,30 @@ export function ChatInterface({ onTransactionComplete }: ChatInterfaceProps) {
     const lowerInput = input.toLowerCase();
     setInput("");
 
-    // Parse user intent
+    // Handle conversation states
     if (conversationState === "awaiting_method") {
       if (lowerInput.includes("mpesa") || lowerInput.includes("m-pesa") || lowerInput === "1") {
-        addBotMessage(BOT_RESPONSES.verification);
+        addBotMessage("🔐 For your security, I've sent a 6-digit OTP to your phone.\n\nPlease enter the code to confirm this transaction.\n\n💡 Hint: Try 123456 for demo");
         setConversationState("awaiting_otp");
       } else if (lowerInput.includes("bank") || lowerInput === "2") {
-        addBotMessage("Bank transfers take 1-2 business days. For instant delivery, choose M-Pesa!\n\nReply '1' for M-Pesa or '2' to continue with Bank.");
+        addBotMessage("🏦 Bank Transfer Selected\n\nBank transfers take 1-2 business days.\n\nFor instant delivery, reply '1' for M-Pesa!\n\n1️⃣ M-Pesa (Instant)\n2️⃣ Continue with Bank");
       }
-    } else if (conversationState === "awaiting_otp") {
-      // Any 6 digit code works for demo
+      return;
+    }
+    
+    if (conversationState === "awaiting_otp") {
       if (/^\d{6}$/.test(input.trim())) {
         setConversationState("processing");
         setIsTyping(true);
         setTimeout(() => {
           const txId = Math.random().toString(36).substring(2, 10).toUpperCase();
           const kesAmount = pendingTx ? Math.round(pendingTx.amount * 152.5) : 15250;
-          const response = BOT_RESPONSES.confirmed
-            .replace("{amount}", pendingTx?.amount.toString() || "100")
-            .replace("{recipient}", pendingTx?.recipient || "+254712345678")
-            .replace("{txId}", txId)
-            .replace("{kesAmount}", kesAmount.toLocaleString());
           
           setMessages((prev) => [
             ...prev,
             {
               id: Date.now().toString(),
-              text: response,
+              text: `✅ Transaction Successful!\n\n🎉 $${pendingTx?.amount} sent to ${pendingTx?.recipient}\n\n📋 Transaction ID: SW-${txId}\n💰 Recipient gets: KES ${kesAmount.toLocaleString()}\n📱 Delivery: M-Pesa (within 30 seconds)\n\n🧾 Receipt sent to your email.\n\nNeed anything else?`,
               isUser: false,
               timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             },
@@ -153,50 +170,49 @@ export function ChatInterface({ onTransactionComplete }: ChatInterfaceProps) {
           }
           setPendingTx(null);
         }, 2000);
+        return;
       } else {
-        addBotMessage("Please enter the 6-digit code I sent to your phone. (Hint: try 123456 for demo)");
+        addBotMessage("❌ Invalid OTP. Please enter the 6-digit code.\n\n💡 Hint: Try 123456 for demo");
+        return;
       }
-    } else if (lowerInput.includes("send") && /\d+/.test(lowerInput)) {
-      // Parse send command
+    }
+
+    // Parse with AI
+    const { response, intent } = generateAIResponse(input, balance);
+    
+    if (intent === "send_intent") {
+      // Extract transaction details
       const amountMatch = lowerInput.match(/(\d+)\s*(usd|dollars?)?/i);
       const phoneMatch = lowerInput.match(/\+?\d{10,12}/);
+      const emailMatch = lowerInput.match(/[\w.-]+@[\w.-]+\.\w+/);
       
       const amount = amountMatch ? parseInt(amountMatch[1]) : 100;
-      const recipient = phoneMatch ? phoneMatch[0] : "+254712345678";
-      const kesAmount = Math.round(amount * 152.5);
-      const fee = (amount * 0.015).toFixed(2);
+      const recipient = emailMatch ? emailMatch[0] : (phoneMatch ? phoneMatch[0] : "+254712345678");
       
       setPendingTx({ amount, recipient });
-      
-      const response = BOT_RESPONSES.send_intent
-        .replace("{amount}", amount.toString())
-        .replace("{recipient}", recipient)
-        .replace("{kesAmount}", kesAmount.toLocaleString())
-        .replace("{fee}", fee);
-      
-      addBotMessage(response + "\n\n1️⃣ M-Pesa (Instant)\n2️⃣ Bank Transfer (1-2 days)");
       setConversationState("awaiting_method");
-    } else if (lowerInput.includes("balance")) {
-      const response = BOT_RESPONSES.balance
-        .replace("{usdBalance}", "250.00")
-        .replace("{kesBalance}", "38,125");
-      addBotMessage(response);
-    } else if (lowerInput.includes("rate") || lowerInput.includes("exchange")) {
-      addBotMessage(BOT_RESPONSES.rate);
-    } else {
-      addBotMessage("I can help you:\n\n• Send money (e.g., 'Send 50 USD to +254700123456')\n• Check your balance\n• View exchange rates\n\nWhat would you like to do?");
     }
+    
+    addBotMessage(response);
   };
 
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Chat header */}
-      <div className="flex items-center gap-3 p-4 border-b bg-card">
-        <div className="w-10 h-10 rounded-full gradient-hero flex items-center justify-center">
+      <div className="flex items-center gap-3 px-4 py-3 border-b bg-card">
+        <div className="w-10 h-10 rounded-full gradient-hero flex items-center justify-center relative">
           <Bot className="w-5 h-5 text-primary-foreground" />
+          <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-accent flex items-center justify-center">
+            <Sparkles className="w-2.5 h-2.5 text-accent-foreground" />
+          </div>
         </div>
-        <div>
-          <h3 className="font-semibold text-sm">SwiftKes Assistant</h3>
+        <div className="flex-1">
+          <h3 className="font-semibold text-sm flex items-center gap-1.5">
+            SwiftKes AI
+            <span className="px-1.5 py-0.5 rounded bg-accent/20 text-accent text-[10px] font-medium">
+              AI
+            </span>
+          </h3>
           <p className="text-xs text-muted-foreground">
             {isTyping ? "typing..." : "Online • Ready to help"}
           </p>
@@ -204,7 +220,7 @@ export function ChatInterface({ onTransactionComplete }: ChatInterfaceProps) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-1">
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
         <AnimatePresence>
           {messages.map((msg) => (
             <ChatMessage
@@ -218,19 +234,19 @@ export function ChatInterface({ onTransactionComplete }: ChatInterfaceProps) {
         
         {isTyping && (
           <motion.div
-            className="flex items-center gap-2 text-muted-foreground text-sm p-3"
+            className="flex items-center gap-2 text-muted-foreground text-xs px-3 py-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>SwiftKes is typing...</span>
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <span>AI is thinking...</span>
           </motion.div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t bg-card">
+      <div className="px-4 py-3 border-t bg-card">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -241,8 +257,8 @@ export function ChatInterface({ onTransactionComplete }: ChatInterfaceProps) {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 bg-background"
+            placeholder="Ask AI anything..."
+            className="flex-1 bg-background text-sm h-10"
             disabled={conversationState === "processing"}
             aria-label="Message input"
           />
@@ -250,7 +266,7 @@ export function ChatInterface({ onTransactionComplete }: ChatInterfaceProps) {
             type="submit" 
             size="icon" 
             disabled={!input.trim() || conversationState === "processing"}
-            className="gradient-hero hover:opacity-90 transition-opacity touch-target"
+            className="gradient-hero hover:opacity-90 transition-opacity h-10 w-10"
             aria-label="Send message"
           >
             <Send className="w-4 h-4" />

@@ -16,7 +16,7 @@ const tabs = [
 export function Navigation({ activeTab, onTabChange }: NavigationProps) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-30">
-      <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
+      <div className="flex items-center justify-around h-14 max-w-lg mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -25,7 +25,7 @@ export function Navigation({ activeTab, onTabChange }: NavigationProps) {
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`flex flex-col items-center justify-center w-16 h-full touch-target relative transition-colors ${
+              className={`flex flex-col items-center justify-center w-14 h-full relative transition-colors ${
                 isActive ? "text-primary" : "text-muted-foreground"
               }`}
               aria-label={tab.label}
@@ -34,12 +34,12 @@ export function Navigation({ activeTab, onTabChange }: NavigationProps) {
               {isActive && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 rounded-b-full bg-primary"
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-b-full bg-primary"
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}
               <Icon className="w-5 h-5" />
-              <span className="text-xs mt-1 font-medium">{tab.label}</span>
+              <span className="text-[10px] mt-0.5 font-medium">{tab.label}</span>
             </button>
           );
         })}
